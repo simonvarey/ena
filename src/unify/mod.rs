@@ -356,11 +356,29 @@ impl<S: UnificationStoreMut> UnificationTable<S> {
         root_key
     }
 
+    /// A readonly version of `inlined_get_root_key`
+    #[inline(always)]
+    fn inlined_get_root_key_readonly(&self, vid: S::Key) -> S::Key {
+        let v = self.value(vid);
+        if v.parent == vid {
+            return vid;
+        }
+
+        let redirect = v.parent;
+        self.uninlined_get_root_key_readonly(redirect)
+    }
+
     // This is a never-inlined version of this function for cold callsites.
     // 'inlined_get_root_key` is the always-inlined version.
     #[inline(never)]
     fn uninlined_get_root_key(&mut self, vid: S::Key) -> S::Key {
         self.inlined_get_root_key(vid)
+    }
+
+    /// A readonly version of `uninlined_get_root_key`
+    #[inline(never)]
+    fn uninlined_get_root_key_readonly(&self, vid: S::Key) -> S::Key {
+        self.inlined_get_root_key_readonly(vid)
     }
 
     fn update_value<OP>(&mut self, key: S::Key, op: OP)
@@ -506,6 +524,15 @@ where
         self.find(a_id) == self.find(b_id)
     }
 
+    /// A readonly version of `unioned`
+    pub fn unioned_readonly<K1, K2>(&self, a_id: K1, b_id: K2) -> bool
+    where
+        K1: Into<K>,
+        K2: Into<K>,
+    {
+        self.find_readonly(a_id) == self.find_readonly(b_id)
+    }
+
     /// Given a key, returns the (current) root key.
     pub fn find<K1>(&mut self, id: K1) -> K
     where
@@ -513,6 +540,15 @@ where
     {
         let id = id.into();
         self.uninlined_get_root_key(id)
+    }
+
+    /// A readonly version of `find`
+    pub fn find_readonly<K1>(&self, id: K1) -> K
+    where
+        K1: Into<K>,
+    {
+        let id = id.into();
+        self.uninlined_get_root_key_readonly(id)
     }
 
     /// Unions together two variables, merging their values. If
@@ -560,6 +596,14 @@ where
         self.inlined_probe_value(id)
     }
 
+    /// A readonly version of `probe_value`
+    pub fn probe_value_readonly<K1>(&self, id: K1) -> V
+    where
+        K1: Into<K>,
+    {
+        self.inlined_probe_value_readonly(id)
+    }
+
     // An always-inlined version of `probe_value`, for hot callsites.
     #[inline(always)]
     pub fn inlined_probe_value<K1>(&mut self, id: K1) -> V
@@ -568,6 +612,17 @@ where
     {
         let id = id.into();
         let id = self.inlined_get_root_key(id);
+        self.value(id).value.clone()
+    }
+
+    /// A readonly version of `inlined_probe_value`
+    #[inline(always)]
+    pub fn inlined_probe_value_readonly<K1>(&self, id: K1) -> V
+    where
+        K1: Into<K>,
+    {
+        let id = id.into();
+        let id = self.inlined_get_root_key_readonly(id);
         self.value(id).value.clone()
     }
 }
