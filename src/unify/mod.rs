@@ -651,35 +651,3 @@ impl<V: UnifyValue> UnifyValue for Option<V> {
         }
     }
 }
-
-///////////////////////////////////////////////////////////////////////
-
-impl<S, K, V> PartialEq for UnificationTable<S>
-where
-    S: UnificationStoreMut<Key = K, Value = V>,
-    K: UnifyKey<Value = V>,
-    V: UnifyValue + PartialEq,
-{
-    fn eq(&self, other: &Self) -> bool {
-        if self.len() != other.len() {
-            return false;
-        }
-        for i in 0..self.len() {
-            let key = K::from_index(i as u32);
-            let self_value = self.probe_value_readonly(key);
-            let other_value = other.probe_value_readonly(key);
-            if self_value != other_value {
-                return false;
-            }
-        }
-
-        true
-    }
-}
-
-impl<S, K, V> Eq for UnificationTable<S>
-where
-    S: UnificationStoreMut<Key = K, Value = V>,
-    K: UnifyKey<Value = V>,
-    V: UnifyValue + Eq,
-{ }
